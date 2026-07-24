@@ -1,14 +1,47 @@
-# Enterprise Agentic RAG (Scalable Pipeline)
+# Enterprise Agentic RAG — Scalable Pipeline
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12+-blue?logo=python" alt="Python 3.12+"/>
+  <img src="https://img.shields.io/badge/LangGraph-Cyclic%20Agent-important" alt="LangGraph"/>
+  <img src="https://img.shields.io/badge/Guardrails-NeMo-blueviolet" alt="NeMo Guardrails"/>
+  <img src="https://img.shields.io/badge/Vector%20DB-Qdrant%20Cloud-green" alt="Qdrant Cloud"/>
+  <img src="https://img.shields.io/badge/LLM%20Gateway-Portkey-orange" alt="Portkey"/>
+  <img src="https://img.shields.io/badge/Embeddings-Gemini%203072d-gold" alt="Gemini Embeddings"/>
+  <img src="https://img.shields.io/badge/Observability-Logfire%20%2B%20LangSmith-red" alt="Observability"/>
+  <img src="https://img.shields.io/badge/Reranking-FlashRank%20(ONNX)-lightgrey" alt="FlashRank"/>
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/>
+</p>
 
 A production-grade, enterprise-level RAG system built with **LangGraph**, **Portkey LLM Gateway**, and **Gemini Embeddings**. The system distinguishes between technical "True Data" and random "Noisy Data" using semantic re-ranking, history-aware planning, and NeMo Guardrails for input/output safety.
+
+---
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Agent Intelligence Flow](#agent-intelligence-flow)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Production-Grade Value Propositions](#production-grade-value-propositions)
+- [Getting Started](#getting-started)
+  - [1. Install Dependencies](#1-install-dependencies)
+  - [2. Configure Environment](#2-configure-environment)
+  - [3. Run Data Ingestion](#3-run-data-ingestion)
+  - [4. Launch the App](#4-launch-the-app)
+  - [5. Run the Eval Suite](#5-run-the-eval-suite)
+- [Evaluation Suite](#evaluation-suite)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
+---
 
 ## Key Features
 
 - **Agentic Intelligence**: LangGraph for cyclic reasoning, multi-step planning, and conversation memory.
 - **Guardrails**: NeMo Guardrails gate blocks off-topic, jailbreak, and injection inputs before any retrieval.
-- **LLM Gateway**: Portkey routes all LLM calls with automatic fallback between primary and backup Groq keys.
+- **LLM Gateway**: Portkey routes all LLM calls with automatic fallback, semantic caching, and retry logic.
 - **Enterprise Search**: Qdrant Cloud for high-performance vector search + FlashRank for local semantic reranking.
-- **Gemini Embeddings**: Google `gemini-embedding-2-preview` (3072-dim) via `langchain-google-genai`.
+- **Gemini Embeddings**: Google `gemini-embedding-2-preview` (3072-dim) via `langchain-google-genai`, with automatic fallback to `all-mpnet-base-v2` (768-dim).
 - **Local Document Parsing**: PDF, HTML, TXT, DOCX, PPTX parsed entirely on-device — no external OCR service.
 - **Observability**: Full trace nesting with **Pydantic Logfire** and **LangSmith** across every agent node.
 - **Evaluation Suite**: RAGAS-powered eval pipeline (6 metrics) with a dedicated Streamlit demo app.
@@ -39,6 +72,7 @@ graph TD
 ```
 production_agentic_rag_kubernetes/
 ├── app/
+│   ├── __init__.py
 │   ├── main.py                      # FastAPI backend (endpoints: /, /query, /graph)
 │   ├── config.py                    # Centralised settings (API keys, model names, Qdrant config)
 │   ├── agents/
@@ -67,7 +101,7 @@ production_agentic_rag_kubernetes/
 │   │       ├── pdf.py               # PDF parser (pypdf + pdfplumber fallback)
 │   │       ├── html.py              # HTML parser (BeautifulSoup)
 │   │       ├── text.py              # Plain text parser
-│   │       └── office.py            # DOCX/PPTX parser (python-docx / python-pptx)
+│   │       └── office.py            # DOCX/PPTX parser (unstructured library)
 │   └── services/
 │       ├── __init__.py
 │       └── retrival/
@@ -113,58 +147,74 @@ production_agentic_rag_kubernetes/
 
 | Layer | Technology |
 |-------|-----------|
-| Orchestration | LangChain + LangGraph |
-| LLMs | Groq (Llama 3.3 70B) via **Portkey** gateway |
-| Guardrails | NeMo Guardrails |
-| Vector DB | Qdrant Cloud |
-| Reranking | FlashRank (local, zero-latency) |
-| Embeddings | Gemini `gemini-embedding-2-preview` (3072-dim) |
-| Document Parsing | pypdf + pdfplumber (local, no OCR service) |
-| Observability | Pydantic Logfire + LangSmith |
-| Evaluation | RAGAS + custom Tool Correctness (Jaccard) |
+| **Orchestration** | LangChain + LangGraph |
+| **Primary LLM** | Groq Llama 3.3 70B via Portkey (`@rag/llama-3.3-70b-versatile`) |
+| **Fallback LLM** | Groq Llama 3.1 8B via Portkey (`@brag/llama-3.1-8b-instant`) |
+| **Guardrails LLM** | Groq Llama 3.1 8B Instant (dedicated, direct ChatGroq) |
+| **Eval Judge LLM** | Groq Llama 3.1 8B Instant (dedicated `JUDGE_GROQ` key) |
+| **Guardrails** | NeMo Guardrails (Colang-defined patterns) |
+| **Vector DB** | Qdrant Cloud |
+| **Reranking** | FlashRank `ms-marco-MiniLM-L-6-v2` (local ONNX, zero-latency) |
+| **Embeddings** | Gemini `gemini-embedding-2-preview` (3072-dim) with sentence-transformers fallback |
+| **Document Parsing** | pypdf + pdfplumber / BeautifulSoup / python-docx / python-pptx / unstructured |
+| **Observability** | Pydantic Logfire + LangSmith |
+| **Evaluation** | RAGAS + custom Tool Correctness (Jaccard similarity) |
+| **UI** | Streamlit |
+| **Package Manager** | uv (with `uv.lock` lockfile) |
 
 ---
 
 ## Production-Grade Value Propositions
 
-This system is engineered for **real-world enterprise deployment** with deep resilience and safety guarantees at every layer:
+This system is engineered for **real-world enterprise deployment** with deep resilience and safety guarantees at every layer.
 
 ### 1. Agentic Intelligence with LangGraph
+
 A cyclic **planner → retriever → responder** architecture powered by LangGraph. The planner node uses LLM-based intent classification to route queries — conversational chit-chat is handled directly from memory, while technical questions trigger full retrieval. [**`app/agents/graph.py`**](app/agents/graph.py)
 
 ### 2. Dual-Layer Safety with NeMo Guardrails
+
 The guardrails gate operates **before any retrieval or LLM inference**. It detects off-topic questions, jailbreak attempts, prompt injections, greetings, and farewells using Colang-defined patterns. A second detection layer uses `RAIL_INDICATORS` string matching on the response for defense-in-depth. Blocked requests never reach the RAG pipeline — saving cost and preventing data leakage. [**`app/guardrails/rails.py`**](app/guardrails/rails.py)
 
 ### 3. Enterprise-Grade LLM Gateway via Portkey
+
 All LLM calls route through **Portkey** with:
+
 - **Automatic fallback**: Primary model `@rag/llama-3.3-70b-versatile` → backup `@brag/llama-3.1-8b-instant` on failure
 - **Semantic caching**: Cache hits serve responses instantly (zero LLM latency), visible via `x-portkey-cache-status: HIT` headers
 - **Retry with exponential backoff**: 2 retry attempts on rate limits before triggering fallback
-- **Config-driven**: Portkey config ID (`pc-portke-5dc95e`) in environment variables — no code changes needed to swap providers
+- **Config-driven**: Portkey config ID in environment variables — no code changes needed to swap providers
 
 [**`app/gateways/client.py`**](app/gateways/client.py)
 
 ### 4. Hybrid Search Pipeline — Vector + Cross-Encoder
+
 A two-stage retrieval system:
+
 1. **Qdrant vector search**: Cosine similarity search over 3072-dimensional Gemini embeddings, returning 15 candidates
 2. **FlashRank Cross-Encoder reranking**: A local quantized ONNX model (`ms-marco-MiniLM-L-6-v2`) re-scores the top 15 candidates semantically, keeping the top 5. This eliminates the "fuzzy matching" problem of pure vector search while keeping latency under 500ms locally.
 
 [**`app/services/retrival/reranking.py`**](app/services/retrival/reranking.py)
 
 ### 5. Resilient Embeddings with Automatic Fallback
+
 Uses **Google Gemini `gemini-embedding-2-preview`** (3072-dimensional) as the primary embedding model. If Gemini is unreachable or rate-limited, the system automatically falls back to **sentence-transformers `all-mpnet-base-v2`** (768-dimensional) — zero manual intervention. The Qdrant collection dimension is resolved at runtime based on which model is active. [**`app/services/retrival/embedding.py`**](app/services/retrival/embedding.py)
 
 ### 6. Fully Local Document Ingestion — No External Services
+
 All document parsing happens entirely on-device with **zero external OCR or cloud APIs**:
+
 - **PDF**: `pypdf` with automatic `pdfplumber` fallback for image-heavy pages
 - **HTML**: `BeautifulSoup` with intelligent content extraction
-- **DOCX/PPTX**: Native Office format parsing via `python-docx` / `python-pptx`
+- **DOCX/PPTX**: Native Office format parsing via `python-docx` / `python-pptx`, with Unstructured fallback
 - **Text**: Raw text file support
 
 The ingestion pipeline processes, chunks, embeds, and indexes documents in a single command. [**`app/ingestion/processor.py`**](app/ingestion/processor.py)
 
 ### 7. Full Observability — Distributed Tracing
+
 Every node in the LangGraph pipeline is instrumented with **Pydantic Logfire** spans, providing end-to-end trace visibility:
+
 - Guardrails gate decisions (blocked/passed)
 - Planner intent classification
 - Qdrant search latency and result count
@@ -175,10 +225,13 @@ Every node in the LangGraph pipeline is instrumented with **Pydantic Logfire** s
 [**`app/main.py`**](app/main.py)
 
 ### 8. Conversation Memory with Thread-Based Isolation
+
 LangGraph's **MemorySaver** checkpoint system preserves conversation history per `thread_id`. Each user session gets an isolated memory space, enabling coherent multi-turn conversations without cross-user leakage. [**`app/agents/graph.py`**](app/agents/graph.py)
 
 ### 9. Comprehensive Evaluation Suite
+
 A dedicated Streamlit evaluation dashboard (`eval/app.py`) with a **3-step workflow**:
+
 1. **Ground Truth Review** — Visual inspection of golden Q&A pairs from enterprise documents
 2. **Live Pipeline Execution** — Sends each golden question to the real API, captures responses, and runs guardrails tests
 3. **RAGAS Metrics Scoring** — 6 metrics computed with separate `JUDGE_GROQ` key to avoid exhausting production TPM:
@@ -187,7 +240,9 @@ A dedicated Streamlit evaluation dashboard (`eval/app.py`) with a **3-step workf
 Token-aware batching (40s cooldowns between samples) keeps eval runs within Groq's 6,000 TPM on-demand tier. [**`eval/`**](eval/)
 
 ### 10. Data Distinction — True vs. Noisy Data
+
 The system is designed to handle **two distinct data categories**:
+
 - **TRUE_DATA**: Curated enterprise documentation (Kubernetes, job management, architecture, networking)
 - **NOISY_DATA**: Random technical papers from diverse domains (Intel hardware, operating systems, machine learning, compression algorithms)
 
@@ -197,25 +252,36 @@ This setup validates the system's ability to semantically distinguish relevant e
 
 ## Getting Started
 
-### 1. Install dependencies
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- API keys for: Groq, Portkey, Qdrant Cloud, Google Gemini, Logfire, LangSmith
+
+### 1. Install Dependencies
 
 ```powershell
-python -m venv tenvv
-.\tenvv\Scripts\activate
+# Using uv (recommended)
+uv sync
+
+# Using pip + venv
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure environment
+### 2. Configure Environment
 
-Create a `.env` file with the following keys:
+Create a `.env` file in the project root with the following keys:
 
 ```env
-# Groq Reasoning Engine (Llama 3.3)
+# Groq Reasoning Engine
 GROQ_API_KEY = ""
 GROQ_FALLBACK_API_KEY = ""          # second Groq key, or same as primary
 
 # Portkey LLM Gateway
 PORTKEY_API_KEY = ""
+PORTKEY_CONFIG = "pc-portke-5dc95e" # Portkey config ID
 
 # Qdrant Vector DB
 QDRANT_API_KEY = ""
@@ -224,13 +290,13 @@ QDRANT_CLUSTER_ENDPOINT = ""        # e.g. https://your-cluster.cloud.qdrant.io:
 # Pydantic Logfire Observability
 LOGFIRE_TOKEN = ""
 
-# LangSmith
+# LangSmith Tracing
 LANGSMITH_TRACING = true
 LANGSMITH_ENDPOINT = https://api.smith.langchain.com
 LANGSMITH_API_KEY = ""
 LANGSMITH_PROJECT = ""
 
-# Streamlit UI → FastAPI
+# Streamlit UI → FastAPI Backend URL
 BACKEND_URL = ""                    # e.g. http://localhost:8000
 
 # Eval judge LLM (keep separate from main key to avoid rate-limiting the live app)
@@ -240,7 +306,7 @@ JUDGE_GROQ = ""
 GEMINI_API_KEY = ""
 ```
 
-### 3. Run data ingestion
+### 3. Run Data Ingestion
 
 Parses all documents in `DATA/`, chunks them, saves metadata to `processed_data/`, and indexes vectors into Qdrant.
 
@@ -250,7 +316,7 @@ python -m app.ingestion.processor DATA --wipe
 
 > Pass `--wipe` to drop and recreate the Qdrant collection. Omit it to append to an existing collection.
 
-### 4. Launch the app
+### 4. Launch the App
 
 ```powershell
 # Terminal 1 — FastAPI backend
@@ -260,15 +326,59 @@ uvicorn app.main:app --reload --port 8000
 streamlit run ui/app.py
 ```
 
-### 5. Run the eval suite (optional)
+### 5. Run the Eval Suite (Optional)
+
+> **Note**: Requires the FastAPI backend running on port 8000.
 
 ```powershell
-# Requires the FastAPI backend running on :8000
-streamlit run evals/app.py
+streamlit run eval/app.py
 ```
 
-----
+---
 
-*Built for High-Scale Enterprise Document Intelligence.*#   a g e n t i c _ r a g _ h i g h _ s c a l e 
- 
- 
+## Evaluation Suite
+
+The eval suite (`eval/`) provides comprehensive quality measurement:
+
+| Phase | Component | Description |
+|-------|-----------|-------------|
+| **Phase 0** | `data_paser.py` | Builds golden Q&A dataset from enterprise documents |
+| **Phase 1** | `pipeline.py` | Sends golden questions to live API, captures responses |
+| **Phase 1b** | `guardrails_eval.py` | Tests guardrails with adversarial + legitimate inputs |
+| **Phase 2** | `metrices.py` | Computes 6 RAGAS metrics + Tool Correctness (Jaccard) |
+| **Dashboard** | `app.py` | Streamlit UI with 3-tab workflow for all phases |
+
+### Golden Dataset
+
+The evaluation uses two dataset files:
+
+- **`golden_dataset.json`** — Ground-truth Q&A pairs with expected tools, domains, and guardrails test cases
+- **`og_golden_dataset.json`** — Original unmodified backup of the golden dataset
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- **[LangChain / LangGraph](https://www.langchain.com/)** — Agent orchestration framework
+- **[NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)** — Safety and security guardrails
+- **[Portkey](https://portkey.ai/)** — LLM gateway with fallback, caching, and observability
+- **[Qdrant](https://qdrant.tech/)** — High-performance vector database
+- **[Groq](https://groq.com/)** — Ultra-fast LLM inference
+- **[Google Gemini](https://ai.google.dev/)** — Embedding model
+- **[FlashRank](https://github.com/PrithivirajDamodaran/FlashRank)** — Local ONNX-powered reranking
+- **[RAGAS](https://docs.ragas.io/)** — Evaluation framework for RAG pipelines
+- **[Pydantic Logfire](https://logfire.pydantic.dev/)** — Observability platform
+- **[LangSmith](https://smith.langchain.com/)** — LLM trace exploration and debugging
+
+---
+
+<p align="center">
+  <i>Built for High-Scale Enterprise Document Intelligence.</i>
+</p>
+
