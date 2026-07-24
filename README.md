@@ -267,7 +267,8 @@ streamlit run ui/app.py
 streamlit run evals/app.py
 ```
 
----
+----
 
-*Built for High-Scale Enterprise Document Intelligence.*#   a g e n t i c _ r a g _ h i g h _ s c a l e  
+*Built for High-Scale Enterprise Document Intelligence.*#   a g e n t i c _ r a g _ h i g h _ s c a l e 
+ 
  
